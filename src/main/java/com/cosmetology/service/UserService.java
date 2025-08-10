@@ -4,6 +4,7 @@ import com.cosmetology.model.User;
 import com.cosmetology.repository.UserRepository;
 import com.twilio.Twilio;
 import com.twilio.rest.api.v2010.account.Message;
+// import com.twilio.type.PhoneNumber;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -11,21 +12,17 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class UserService implements InitializingBean {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final Random random = new Random();
 
-    // Temporary in-memory storage for registration data before verification
-    private final Map<String, TempUser> pendingRegistrations = new ConcurrentHashMap<>();
+    private final Random random = new Random();
 
     @Value("${twilio.account.sid}")
     private String twilioAccountSid;
@@ -48,100 +45,86 @@ public class UserService implements InitializingBean {
     }
 
     public void initiateRegistration(String email, String password, String mobile) {
-        String normalizedEmail = email.toLowerCase();
+    String normalizedEmail = email.toLowerCase();
 
-        System.out.println("Checking if email exists: " + normalizedEmail);
-        if (userRepository.findByEmail(normalizedEmail).isPresent()) {
-            throw new RuntimeException("Email already registered");
-        }
-
-        System.out.println("Checking if mobile exists: " + mobile);
-        if (userRepository.findByMobile(mobile).isPresent()) {
-            throw new RuntimeException("Mobile number already registered");
-        }
-
-        System.out.println("Generating OTP");
-        String otp = generateOtp();
-        Instant otpExpiry = Instant.now().plus(10, ChronoUnit.MINUTES);
-
-        // Store temporarily in memory
-        pendingRegistrations.put(normalizedEmail, new TempUser(
-                normalizedEmail,
-                passwordEncoder.encode(password),
-                mobile,
-                otp,
-                otpExpiry
-        ));
-
-        System.out.println("Sending OTP SMS");
-        sendOtpSms(mobile, otp);
-        System.out.println("OTP sent: " + otp + " to " + mobile);
+    System.out.println("Checking if email exists: " + normalizedEmail);
+    Optional<User> existingUserByEmail = userRepository.findByEmail(normalizedEmail);
+    if (existingUserByEmail.isPresent()) {
+        throw new RuntimeException("Email already registered");
     }
+
+    System.out.println("Checking if mobile exists: " + mobile);
+    Optional<User> existingUserByMobile = userRepository.findByMobile(mobile);
+    if (existingUserByMobile.isPresent()) {
+        throw new RuntimeException("Mobile number already registered");
+    }
+
+    System.out.println("Creating new user");
+    User user = new User();
+    user.setEmail(normalizedEmail);
+    user.setPassword(passwordEncoder.encode(password));
+    user.setMobile(mobile);
+
+    String otp = generateOtp();
+    user.setOtp(otp);
+    user.setOtpExpiry(Instant.now().plus(10, ChronoUnit.MINUTES));
+
+    System.out.println("Saving user to DB");
+    userRepository.save(user);
+
+    System.out.println("Sending OTP SMS");
+    sendOtpSms(mobile, otp);
+
+    System.out.println("OTP sent: " + otp + " to " + mobile);
+}
+
 
     private void sendOtpSms(String toMobile, String otp) {
-        int maxRetries = 3;
-        int delayBetweenRetriesMs = 2000;
-
-        for (int attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-                String messageBody = "Your OTP code is: " + otp;
-                Message.creator(
-                        new com.twilio.type.PhoneNumber(toMobile),
-                        new com.twilio.type.PhoneNumber(twilioPhoneNumber),
-                        messageBody
-                ).create();
-
-                System.out.println("OTP sent successfully to " + toMobile + " on attempt " + attempt);
-                return;
-
-            } catch (Exception e) {
-                System.err.println("Failed to send OTP SMS on attempt " + attempt + ": " + e.getMessage());
-
-                if (attempt == maxRetries) {
-                    throw new RuntimeException("Failed to send OTP after " + maxRetries + " attempts", e);
-                }
-
-                try {
-                    Thread.sleep(delayBetweenRetriesMs);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException("OTP sending interrupted", ie);
-                }
-            }
-        }
+    try {
+        String messageBody = "Your OTP code is: " + otp;
+        Message.creator(
+                new com.twilio.type.PhoneNumber(toMobile),
+                new com.twilio.type.PhoneNumber(twilioPhoneNumber),
+                messageBody
+        ).create();
+    } catch (Exception e) {
+        System.err.println("Failed to send OTP SMS: " + e.getMessage());
+        // Optionally log the error or handle fallback (like console print)
     }
+}
+
 
     public User verifyOtp(String email, String otp) {
-        String normalizedEmail = email.toLowerCase();
-        TempUser tempUser = pendingRegistrations.get(normalizedEmail);
-
-        if (tempUser == null) {
-            throw new RuntimeException("No pending registration found");
+        Optional<User> userOpt = userRepository.findByEmail(email);
+        if (userOpt.isEmpty()) {
+            throw new RuntimeException("User not found");
         }
 
-        if (!tempUser.getOtp().equals(otp) || Instant.now().isAfter(tempUser.getOtpExpiry())) {
-            throw new RuntimeException("Invalid or expired OTP");
+        User user = userOpt.get();
+
+         if (user.getOtp() == null || !user.getOtp().equals(otp) || user.getOtpExpiry() == null
+            || Instant.now().isAfter(user.getOtpExpiry())) {
+        // OTP invalid → delete user
+        userRepository.delete(user);
+        throw new RuntimeException("Invalid or expired OTP");
         }
 
-        // Create actual user and save in DB
-        User user = new User();
-        user.setEmail(tempUser.getEmail());
-        user.setPassword(tempUser.getPasswordHash());
-        user.setMobile(tempUser.getMobile());
+        user.setOtp(null);
+        user.setOtpExpiry(null);
         user.setVerified(true);
-
         userRepository.save(user);
-
-        // Remove from pending registrations
-        pendingRegistrations.remove(normalizedEmail);
 
         return user;
     }
 
     public User loginWithIdentifier(String identifier, String password) {
-        Optional<User> userOpt = identifier.contains("@")
-                ? userRepository.findByEmail(identifier)
-                : userRepository.findByMobile(identifier);
+        Optional<User> userOpt;
+
+        if (identifier.contains("@")) {
+            userOpt = userRepository.findByEmail(identifier);
+        } else {
+            userOpt = userRepository.findByMobile(identifier);
+        }
 
         if (userOpt.isEmpty()) {
             throw new RuntimeException("Authentication Error - invalid user");
@@ -160,6 +143,8 @@ public class UserService implements InitializingBean {
         return user;
     }
 
+    // ----------- Forgot Password Feature -----------
+
     public void sendForgotPasswordEmailOtp(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Email not registered"));
@@ -170,6 +155,8 @@ public class UserService implements InitializingBean {
         userRepository.save(user);
 
         System.out.println("📌 TEST MODE: Forgot Password OTP (email) for " + email + " is " + otp);
+
+        // Here you would send OTP via email using your email service.
     }
 
     public void sendForgotPasswordPhoneOtp(String phone) {
@@ -181,6 +168,9 @@ public class UserService implements InitializingBean {
         user.setForgotPasswordOtpExpiry(Instant.now().plus(10, ChronoUnit.MINUTES));
         userRepository.save(user);
 
+        System.out.println("📌 TEST MODE: Forgot Password OTP (phone) for " + phone + " is " + otp);
+
+        // Send OTP SMS using Twilio
         sendOtpSms(phone, otp);
     }
 
@@ -239,34 +229,12 @@ public class UserService implements InitializingBean {
         userRepository.save(user);
     }
 
+    // ------- Helper Methods --------
     private String generateOtp() {
         return String.format("%06d", random.nextInt(1_000_000));
     }
 
     private String generateResetToken() {
         return UUID.randomUUID().toString();
-    }
-
-    // Inner class for storing temporary registration data
-    private static class TempUser {
-        private final String email;
-        private final String passwordHash;
-        private final String mobile;
-        private final String otp;
-        private final Instant otpExpiry;
-
-        public TempUser(String email, String passwordHash, String mobile, String otp, Instant otpExpiry) {
-            this.email = email;
-            this.passwordHash = passwordHash;
-            this.mobile = mobile;
-            this.otp = otp;
-            this.otpExpiry = otpExpiry;
-        }
-
-        public String getEmail() { return email; }
-        public String getPasswordHash() { return passwordHash; }
-        public String getMobile() { return mobile; }
-        public String getOtp() { return otp; }
-        public Instant getOtpExpiry() { return otpExpiry; }
     }
 }
