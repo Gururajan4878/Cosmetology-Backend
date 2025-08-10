@@ -1,0 +1,17 @@
+/Users/srikanth/IdeaProjects1/cosmetology-app/backend/src/main/java/com/cosmetology/security/CustomUserDetailsService.java
+/Users/srikanth/IdeaProjects1/cosmetology-app/backend/src/main/java/com/cosmetology/repository/UserRepository.java
+/Users/srikanth/IdeaProjects1/cosmetology-app/backend/src/main/java/com/cosmetology/controller/AuthController.java
+/Users/srikanth/IdeaProjects1/cosmetology-app/backend/src/main/java/com/cosmetology/security/JwtUtil.java
+/Users/srikanth/IdeaProjects1/cosmetology-app/backend/src/main/java/com/cosmetology/controller/VideoController.java
+/Users/srikanth/IdeaProjects1/cosmetology-app/backend/src/main/java/com/cosmetology/dto/AuthRequest.java
+/Users/srikanth/IdeaProjects1/cosmetology-app/backend/src/main/java/com/cosmetology/service/UserService.java
+/Users/srikanth/IdeaProjects1/cosmetology-app/backend/src/main/java/com/cosmetology/dto/AuthResponse.java
+/Users/srikanth/IdeaProjects1/cosmetology-app/backend/src/main/java/com/cosmetology/config/CorsConfig.java
+/Users/srikanth/IdeaProjects1/cosmetology-app/backend/src/main/java/com/cosmetology/security/SecurityConfig.java
+/Users/srikanth/IdeaProjects1/cosmetology-app/backend/src/main/java/com/cosmetology/CosmetologyApplication.java
+/Users/srikanth/IdeaProjects1/cosmetology-app/backend/src/main/java/com/cosmetology/service/TwilioService.java
+/Users/srikanth/IdeaProjects1/cosmetology-app/backend/src/main/java/com/cosmetology/controller/PaymentController.java
+/Users/srikanth/IdeaProjects1/cosmetology-app/backend/src/main/java/com/cosmetology/model/User.java
+/Users/srikanth/IdeaProjects1/cosmetology-app/backend/src/main/java/com/cosmetology/security/JwtFilter.java
+/Users/srikanth/IdeaProjects1/cosmetology-app/backend/src/main/java/com/cosmetology/config/TwilioConfig.java
+/Users/srikanth/IdeaProjects1/cosmetology-app/backend/src/main/java/com/cosmetology/config/SecurityBeansConfig.java
