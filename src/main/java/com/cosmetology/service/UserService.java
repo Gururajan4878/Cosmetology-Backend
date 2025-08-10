@@ -79,17 +79,38 @@ public class UserService implements InitializingBean {
 }
 
 
-    private void sendOtpSms(String toMobile, String otp) {
-    try {
-        String messageBody = "Your OTP code is: " + otp;
-        Message.creator(
-                new com.twilio.type.PhoneNumber(toMobile),
-                new com.twilio.type.PhoneNumber(twilioPhoneNumber),
-                messageBody
-        ).create();
-    } catch (Exception e) {
-        System.err.println("Failed to send OTP SMS: " + e.getMessage());
-        // Optionally log the error or handle fallback (like console print)
+   private void sendOtpSms(String toMobile, String otp) {
+    int maxRetries = 3; // Number of attempts
+    int delayBetweenRetriesMs = 2000; // Wait 2 seconds between attempts
+
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            String messageBody = "Your OTP code is: " + otp;
+            Message.creator(
+                    new com.twilio.type.PhoneNumber(toMobile),
+                    new com.twilio.type.PhoneNumber(twilioPhoneNumber),
+                    messageBody
+            ).create();
+
+            System.out.println("OTP sent successfully to " + toMobile + " on attempt " + attempt);
+            return; // Success, exit the loop
+
+        } catch (Exception e) {
+            System.err.println("Failed to send OTP SMS on attempt " + attempt + ": " + e.getMessage());
+
+            // If this is the last attempt, throw the exception
+            if (attempt == maxRetries) {
+                throw new RuntimeException("Failed to send OTP after " + maxRetries + " attempts", e);
+            }
+
+            // Wait before retrying
+            try {
+                Thread.sleep(delayBetweenRetriesMs);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("OTP sending interrupted", ie);
+            }
+        }
     }
 }
 
