@@ -15,6 +15,7 @@ public class AuthController {
 
     private final UserService userService;
     private final JwtUtil jwtUtil;
+    
 
     public AuthController(UserService userService, JwtUtil jwtUtil) {
         this.userService = userService;
@@ -60,6 +61,8 @@ public ResponseEntity<?> registerInitiate(@RequestBody RegisterRequest r) {
 
 
         // Proceed with your existing registration initiation logic
+
+        
         userService.initiateRegistration(r.email, r.password, r.mobile);
 
         System.out.println("Register initiate success");
