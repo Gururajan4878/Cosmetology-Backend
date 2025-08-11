@@ -22,6 +22,8 @@ public class User {
 
     private boolean verified = false;
 
+    private boolean otpVerified = false;
+
     private List<String> paidVideoIds = new ArrayList<>();
 
     // Forgot password fields
@@ -39,6 +41,7 @@ public class User {
         this.password = password;
         this.mobile = mobile;
         this.verified = false;
+        this.otpVerified = false;
     }
 
     // ===== Getters & Setters =====
@@ -98,6 +101,14 @@ public class User {
     public void setVerified(boolean verified) {
         this.verified = verified;
     }
+
+    public boolean isotpVerified() {
+    return otpVerified;
+}
+
+public void setotpVerified(boolean otpVerified) {
+    this.otpVerified = otpVerified;
+}
 
     public List<String> getPaidVideoIds() {
         return paidVideoIds;

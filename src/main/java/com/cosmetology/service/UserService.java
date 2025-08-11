@@ -64,6 +64,7 @@ public class UserService implements InitializingBean {
     user.setEmail(normalizedEmail);
     user.setPassword(passwordEncoder.encode(password));
     user.setMobile(mobile);
+    user.setotpVerified(false);
 
     String otp = generateOtp();
     user.setOtp(otp);
@@ -112,8 +113,9 @@ public class UserService implements InitializingBean {
         user.setOtp(null);
         user.setOtpExpiry(null);
         user.setVerified(true);
-        userRepository.save(user);
+        user.setotpVerified(true);
 
+        userRepository.save(user);
         return user;
     }
 
