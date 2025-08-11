@@ -47,17 +47,29 @@ public class UserService implements InitializingBean {
     public void initiateRegistration(String email, String password, String mobile) {
     String normalizedEmail = email.toLowerCase();
 
-    System.out.println("Checking if email exists: " + normalizedEmail);
-    Optional<User> existingUserByEmail = userRepository.findByEmail(normalizedEmail);
-    if (existingUserByEmail.isPresent()) {
-        throw new RuntimeException("Email already registered");
-    }
+        System.out.println("Checking if email exists: " + normalizedEmail);
+        Optional<User> existingUserByEmail = userRepository.findByEmail(normalizedEmail);
+        if (existingUserByEmail.isPresent()) {
+            User existingUser = existingUserByEmail.get();
+            if (existingUser.isotpVerified()) {
+                throw new RuntimeException("Email already verified");
+            } else {
+                // otpVerified == false, delete the old user so we can create new
+                userRepository.delete(existingUser);
+            }
+        }
 
-    System.out.println("Checking if mobile exists: " + mobile);
-    Optional<User> existingUserByMobile = userRepository.findByMobile(mobile);
-    if (existingUserByMobile.isPresent()) {
-        throw new RuntimeException("Mobile number already registered");
-    }
+        System.out.println("Checking if mobile exists: " + mobile);
+        Optional<User> existingUserByMobile = userRepository.findByMobile(mobile);
+        if (existingUserByMobile.isPresent()) {
+            User existingUser = existingUserByMobile.get();
+            if (existingUser.isotpVerified()) {
+                throw new RuntimeException("Mobile number already verified");
+            } else {
+                // otpVerified == false, delete the old user so we can create new
+                userRepository.delete(existingUser);
+            }
+        }
 
     System.out.println("Creating new user");
     User user = new User();
